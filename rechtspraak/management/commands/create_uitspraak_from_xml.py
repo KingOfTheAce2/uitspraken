@@ -49,7 +49,6 @@ class Command(BaseCommand):
 
             ecli = xmlroot.find("rdf:RDF/rdf:Description/dcterms:identifier", XML_NAMESPACES).text
             instantie_naam = xmlroot.find("rdf:RDF/rdf:Description/dcterms:creator", XML_NAMESPACES).text
-            uitspraaktype = xmlroot.find("rdf:RDF/rdf:Description/dcterms:creator", XML_NAMESPACES).text
 
             try:
                 instantie = Instantie.objects.get(naam=instantie_naam)
@@ -73,7 +72,11 @@ class Command(BaseCommand):
             except KeyError:
                 publicatiedatum = None
 
-            zaaknummer = xmlroot.find("rdf:RDF/rdf:Description/psi:zaaknummer", XML_NAMESPACES).text
+            try:
+                zaaknummer = xmlroot.find("rdf:RDF/rdf:Description/psi:zaaknummer", XML_NAMESPACES).text
+            except AttributeError:
+                logger.warning("Could not find a zaaknummer for %s", xmlfile)
+                zaaknummer = ""
 
             inhoudsindicatie_xml = xmlroot.find("rs:inhoudsindicatie", XML_NAMESPACES)
             inhoudsindicatie = ""
