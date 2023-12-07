@@ -72,15 +72,23 @@ class Command(BaseCommand):
 
             inhoudsindicatie_xml = xmlroot.find("rs:inhoudsindicatie", XML_NAMESPACES)
             inhoudsindicatie = ""
-            for x in inhoudsindicatie_xml.iter():
-                if x.text is not None:
-                    inhoudsindicatie += x.text + "\n"
+
+            try:
+                for x in inhoudsindicatie_xml.iter():
+                    if x.text is not None:
+                        inhoudsindicatie += x.text + "\n"
+            except AttributeError:
+                logger.error("Could not find an inhoudsindicatie in XLM %s", xmlfilename)
 
             uitspraak_xml = xmlroot.find("rs:uitspraak", XML_NAMESPACES)
             uitspraak_text = ""
-            for x in uitspraak_xml.iter():
-                if x.text is not None:
-                    uitspraak_text += x.text + "\n"
+
+            try:
+                for x in uitspraak_xml.iter():
+                    if x.text is not None:
+                        uitspraak_text += x.text + "\n"
+            except AttributeError:
+                logger.error("Could not find a uitspraak in XML %s", xmlfilename)
 
             uitspraak, created = Uitspraak.objects.update_or_create(
                 ecli=ecli,
