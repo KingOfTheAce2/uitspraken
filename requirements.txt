@@ -1,0 +1,21 @@
+pip>=23.2
+
+# Crawling
+beautifulsoup4>=4.12.2
+requests>=2.31.0
+#gensim>=4.3.2
+
+# Framework
+Django>=5.0
+# mysqlclient
+
+gunicorn
+
+# rq>=1.15.1
+# django-rq>=2.8.1
+# django-redis>=2.5.0
+
+# lark
+
+# numpy
+# matplotlib
