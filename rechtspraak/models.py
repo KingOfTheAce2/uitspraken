@@ -41,4 +41,4 @@ class Uitspraak(models.Model):
     instantie = models.ForeignKey(Instantie, models.CASCADE)
 
     def __str__(self) -> str:
-        return f"Uitspraak {self.ecli} ({self.instantie.afkorting})"
+        return f"Uitspraak {self.ecli} ({self.instantie.naam})"

@@ -51,7 +51,12 @@ class Command(BaseCommand):
             instantie_naam = xmlroot.find("rdf:RDF/rdf:Description/dcterms:creator", XML_NAMESPACES).text
             uitspraaktype = xmlroot.find("rdf:RDF/rdf:Description/dcterms:creator", XML_NAMESPACES).text
 
-            instantie = Instantie.objects.get(naam=instantie_naam)
+            try:
+                instantie = Instantie.objects.get(naam=instantie_naam)
+            except Instantie.DoesNotExist:
+                logger.error("Could not find instantie for naam %s", instantie_naam)
+                instantie = Instantie.objects.get(afkorting="XX")
+
             try:
                 uitspraakdatum = datetime.datetime.strptime(
                     xmlroot.find("rdf:RDF/rdf:Description/dcterms:date", XML_NAMESPACES).text,
