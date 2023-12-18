@@ -14,6 +14,7 @@ import datetime
 import logging
 import xml.etree.ElementTree as ET
 
+from pathlib import Path
 from typing import Any
 
 from django.core.management import BaseCommand, CommandParser
@@ -29,91 +30,112 @@ XML_NAMESPACES = {
 }
 
 
+def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspraak:
+    xmlroot = ET.fromstring(xmlstring)
+
+    ecli = xmlroot.find("rdf:RDF/rdf:Description/dcterms:identifier", XML_NAMESPACES).text
+    instantie_naam = xmlroot.find("rdf:RDF/rdf:Description/dcterms:creator", XML_NAMESPACES).text
+
+    try:
+        instantie = Instantie.objects.get(naam=instantie_naam)
+    except Instantie.DoesNotExist:
+        logger.error("Could not find instantie for naam %s", instantie_naam)
+        instantie = Instantie.objects.get(afkorting="XX")
+
+    try:
+        uitspraakdatum = datetime.datetime.strptime(
+            xmlroot.find("rdf:RDF/rdf:Description/dcterms:date", XML_NAMESPACES).text,
+            "%Y-%m-%d"
+        )
+    except KeyError:
+        uitspraakdatum = None
+
+    try:
+        publicatiedatum = datetime.datetime.strptime(
+            xmlroot.find("rdf:RDF/rdf:Description/dcterms:issued", XML_NAMESPACES).text,
+            "%Y-%m-%d"
+        )
+    except KeyError:
+        publicatiedatum = None
+
+    try:
+        zaaknummer = xmlroot.find("rdf:RDF/rdf:Description/psi:zaaknummer", XML_NAMESPACES).text
+    except AttributeError:
+        logger.warning("Could not find a zaaknummer for %s", xmlfilename)
+        zaaknummer = ""
+
+    inhoudsindicatie_xml = xmlroot.find("rs:inhoudsindicatie", XML_NAMESPACES)
+    inhoudsindicatie = ""
+
+    try:
+        for x in inhoudsindicatie_xml.iter():
+            if x.text is not None:
+                inhoudsindicatie += x.text + "\n"
+    except AttributeError:
+        logger.error("Could not find an inhoudsindicatie in XML %s", xmlfilename)
+
+    uitspraak_xml = xmlroot.find("rs:uitspraak", XML_NAMESPACES)
+    uitspraak_text = ""
+
+    try:
+        for x in uitspraak_xml.iter():
+            if x.text is not None:
+                uitspraak_text += x.text + "\n"
+    except AttributeError:
+        logger.error("Could not find a uitspraak in XML %s", xmlfilename)
+
+    uitspraak, created = Uitspraak.objects.update_or_create(
+        ecli=ecli,
+        instantie=instantie
+    )
+
+    uitspraak.zaaknummer = zaaknummer
+    uitspraak.publicatiedatum = publicatiedatum
+    uitspraak.uitspraakdatum = uitspraakdatum
+    uitspraak.raw_xml = xmlstring
+
+    uitspraak.inhoudsindicatie = inhoudsindicatie
+    uitspraak.uitspraak = uitspraak_text
+
+    uitspraak.save()
+
+    if created:
+        logger.info("Successfully created uitspraak %s", uitspraak)
+    else:
+        logger.info("Successfully updated uitspraak %s", uitspraak)
+
+    return uitspraak
+
+
 class Command(BaseCommand):
     """Add all instanties"""
 
     help = "Add all instanties"
 
     def add_arguments(self, parser: CommandParser) -> None:
-        parser.add_argument("xmlfile", type=str, nargs="+", help="The XML file to read the uitspraak from.")
+        parser.add_argument("xml_file_or_dir", type=str, nargs="+", help="The XML file (or directory with XML files) to read the uitspraak from.")
 
     def handle(self, *args: Any, **options: Any) -> None:
-        print(options["xmlfile"])
+        print(options["xml_file_or_dir"])
 
-        for xmlfilename in options["xmlfile"]:
-            with open(xmlfilename, "rt", encoding="utf-8") as xmlfile:
-                raw_xml = xmlfile.read()
+        for xmlpath_str in options["xml_file_or_dir"]:
+            path = Path(xmlpath_str)
 
-            tree = ET.parse(xmlfilename)
-            xmlroot = tree.getroot()
+            if path.exists() and path.is_file():
+                logger.info("%s is a file", xmlpath_str)
+                with path.open("rt", encoding="utf-8") as xmlfile:
+                    raw_xml = xmlfile.read()
 
-            ecli = xmlroot.find("rdf:RDF/rdf:Description/dcterms:identifier", XML_NAMESPACES).text
-            instantie_naam = xmlroot.find("rdf:RDF/rdf:Description/dcterms:creator", XML_NAMESPACES).text
+                create_uitspraak_from_xmlstring(raw_xml, xmlpath_str)
 
-            try:
-                instantie = Instantie.objects.get(naam=instantie_naam)
-            except Instantie.DoesNotExist:
-                logger.error("Could not find instantie for naam %s", instantie_naam)
-                instantie = Instantie.objects.get(afkorting="XX")
+            elif path.exists() and path.is_dir():
+                logger.info("%s is a directory", xmlpath_str)
+                xmlfilepaths = path.glob("./*.xml")
 
-            try:
-                uitspraakdatum = datetime.datetime.strptime(
-                    xmlroot.find("rdf:RDF/rdf:Description/dcterms:date", XML_NAMESPACES).text,
-                    "%Y-%m-%d"
-                )
-            except KeyError:
-                uitspraakdatum = None
+                for xmlfilepath in xmlfilepaths:
+                    if xmlfilepath.exists() and xmlfilepath.is_file():
+                        logger.info("Found %s", xmlfilepath)
+                        with xmlfilepath.open("rt", encoding="utf-8") as xmlfile:
+                            raw_xml = xmlfile.read()
 
-            try:
-                publicatiedatum = datetime.datetime.strptime(
-                    xmlroot.find("rdf:RDF/rdf:Description/dcterms:issued", XML_NAMESPACES).text,
-                    "%Y-%m-%d"
-                )
-            except KeyError:
-                publicatiedatum = None
-
-            try:
-                zaaknummer = xmlroot.find("rdf:RDF/rdf:Description/psi:zaaknummer", XML_NAMESPACES).text
-            except AttributeError:
-                logger.warning("Could not find a zaaknummer for %s", xmlfile)
-                zaaknummer = ""
-
-            inhoudsindicatie_xml = xmlroot.find("rs:inhoudsindicatie", XML_NAMESPACES)
-            inhoudsindicatie = ""
-
-            try:
-                for x in inhoudsindicatie_xml.iter():
-                    if x.text is not None:
-                        inhoudsindicatie += x.text + "\n"
-            except AttributeError:
-                logger.error("Could not find an inhoudsindicatie in XLM %s", xmlfilename)
-
-            uitspraak_xml = xmlroot.find("rs:uitspraak", XML_NAMESPACES)
-            uitspraak_text = ""
-
-            try:
-                for x in uitspraak_xml.iter():
-                    if x.text is not None:
-                        uitspraak_text += x.text + "\n"
-            except AttributeError:
-                logger.error("Could not find a uitspraak in XML %s", xmlfilename)
-
-            uitspraak, created = Uitspraak.objects.update_or_create(
-                ecli=ecli,
-                instantie=instantie
-            )
-
-            uitspraak.zaaknummer = zaaknummer
-            uitspraak.publicatiedatum = publicatiedatum
-            uitspraak.uitspraakdatum = uitspraakdatum
-            uitspraak.raw_xml = raw_xml
-
-            uitspraak.inhoudsindicatie = inhoudsindicatie
-            uitspraak.uitspraak = uitspraak_text
-
-            uitspraak.save()
-
-            if created:
-                logger.info("Successfully created uitspraak %s", uitspraak)
-            else:
-                logger.info("Successfully updated uitspraak %s", uitspraak)
+                        create_uitspraak_from_xmlstring(raw_xml, str(xmlfilepath))
