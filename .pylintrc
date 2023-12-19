@@ -566,6 +566,9 @@ generated-members=command.style.SUCCESS,
                   ManyToManyField.add,
                   Instantie.objects.*,
                   Uitspraak.objects.*,
+                  Rechtsgebied.objects.*,
+                  Instantie.DoesNotExist,
+                  Uitspraak.DoesNotExist,
 
 # Tells whether to warn about missing members when the owner of the attribute
 # is inferred to be None.

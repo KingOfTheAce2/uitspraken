@@ -13,7 +13,29 @@ import datetime
 from django.db import models
 
 
+class Rechtsgebied(models.Model):
+    """Model for a rechtsgebied as listed in the waardelijst Rechtsgebieden"""
+
+    naam = models.CharField(max_length=512)
+    identifier = models.URLField(unique=True)
+
+    class Meta:
+        """Meta information for Django"""
+
+        indexes = [
+            models.Index(fields=["naam"])
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.naam}"
+
+    def __repr__(self) -> str:
+        return f"Rechtsgebied ({self.__str__()})"
+
+
 class Instantie(models.Model):
+    """Model for an Instantie: a specific court or body which at some point in time had the statutory power to issue legal decisions"""
+
     naam = models.CharField(max_length=256, unique=True)
     instantie_type = models.CharField(max_length=256)
     identifier = models.CharField(max_length=1024)
@@ -21,24 +43,59 @@ class Instantie(models.Model):
     begin_date = models.DateField()
     end_date = models.DateField(null=True)
 
+    class Meta:
+        """Meta information for Django"""
+
+        indexes = [
+            models.Index(fields=["naam"]),
+            models.Index(fields=["instantie_type"]),
+            models.Index(fields=["afkorting"]),
+            models.Index(fields=["identifier"])
+        ]
+
     def __str__(self) -> str:
         return f"Instantie {self.instantie_type} {self.afkorting}"
 
 
 class Uitspraak(models.Model):
-    ecli = models.CharField(max_length=128, unique=True)
-    zaaknummer = models.CharField(max_length=2048)
+    """A court decision: arrest, uitspraak, beschikking, conclusie, etc."""
+
+    ecli = models.CharField(
+        max_length=128,
+        unique=True,
+        help_text="The European Case Law Identifier (ECLI) for this Uitspraak."
+    )
+    zaaknummer = models.CharField(
+        max_length=2048,
+        help_text="The case number specific to the Instantie that issued the uitspraak."
+    )
 
     publicatiedatum = models.DateField(default=datetime.date(1000, 1, 1))
     uitspraakdatum = models.DateField(default=datetime.date(1000, 1, 1))
 
     raw_xml = models.TextField()
-    json = models.JSONField(default=dict)
+
+    data = models.JSONField(
+        default=dict,
+        help_text="JSON field to store optional extra (meta)data."
+    )
 
     inhoudsindicatie = models.TextField()
     uitspraak = models.TextField()
 
+    # TODO: Support dcterms:replaces and dcterms:isReplacedBy
+
     instantie = models.ForeignKey(Instantie, models.CASCADE)
+
+    class Meta:
+        """Meta information for Django"""
+
+        indexes = [
+            models.Index(fields=["ecli"]),
+            models.Index(fields=["zaaknummer"]),
+            models.Index(fields=["ecli", "publicatiedatum"]),
+            models.Index(fields=["ecli", "uitspraakdatum"])
+        ]
 
     def __str__(self) -> str:
         return f"Uitspraak {self.ecli} ({self.instantie.naam})"
