@@ -3,6 +3,8 @@
 
     Parse an uitspraak from an XML file.
 
+    For information regarding the expected XML structure, please see https://www.rechtspraak.nl/Uitspraken/Paginas/Open-Data.aspx.
+
     Copyright 2023, Martijn Staal <uitspraken [at] martijn-staal.nl>
 
     Available under the EUPL-1.2, or, at your option, any later version.
@@ -19,7 +21,7 @@ from typing import Any
 
 from django.core.management import BaseCommand, CommandParser
 
-from rechtspraak.models import Instantie, Uitspraak
+from rechtspraak.models import Instantie, Rechtsgebied, ProcedureSoort, Uitspraak
 
 logger = logging.getLogger(__name__)
 XML_NAMESPACES = {
@@ -31,6 +33,16 @@ XML_NAMESPACES = {
 
 
 def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspraak:
+    """Create a new Uitspraak object based on an XML string as provided by de Rechtspraak.
+
+    The expected XML structure is based on the structure as described in "Open Data van de Rechtspraak",
+    version 1.15, dated 2019-03-20.
+    This document can be found here:
+    https://www.rechtspraak.nl/SiteCollectionDocuments/Technische-documentatie-Open-Data-van-de-Rechtspraak.pdf
+
+    xmlstring -- the actual XML in string format
+    xmlfilename -- the filename the XML string was read from; only used for logging purposes.
+    """
     xmlroot = ET.fromstring(xmlstring)
 
     ecli = xmlroot.find("rdf:RDF/rdf:Description/dcterms:identifier", XML_NAMESPACES).text
@@ -64,6 +76,24 @@ def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspra
         logger.warning("Could not find a zaaknummer for %s", xmlfilename)
         zaaknummer = ""
 
+    try:
+        uitspraak_type = xmlroot.find("rdf:RDF/rdf:Description/dcterms:type", XML_NAMESPACES).text
+    except AttributeError:
+        logger.warning("Could not find an uitspraak type for %s", xmlfilename)
+        uitspraak_type = "Uitspraak"
+
+    proceduresoorten_xml = xmlroot.findall("rdf:RDF/rdf:Description/psi:procedure", XML_NAMESPACES)
+    proceduresoorten: list[ProcedureSoort] = []
+
+    for proceduresoort_xml in proceduresoorten_xml:
+        proceduresoorten.append(ProcedureSoort.objects.get(identifier=proceduresoort_xml.get("resourceIdentifier")))
+
+    rechtsgebieden_xml = xmlroot.findall("rdf:RDF/rdf:Description/dcterms:subject", XML_NAMESPACES)
+    rechtsgebieden: list[Rechtsgebied] = []
+
+    for rechtsgebied_xml in rechtsgebieden_xml:
+        rechtsgebieden.append(Rechtsgebied.objects.get(identifier=rechtsgebied_xml.get("resourceIdentifier")))
+
     inhoudsindicatie_xml = xmlroot.find("rs:inhoudsindicatie", XML_NAMESPACES)
     inhoudsindicatie = ""
 
@@ -96,6 +126,14 @@ def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspra
 
     uitspraak.inhoudsindicatie = inhoudsindicatie
     uitspraak.uitspraak = uitspraak_text
+
+    uitspraak.uitspraak_type = uitspraak_type
+
+    for proceduresoort in proceduresoorten:
+        uitspraak.procedure_soorten.add(proceduresoort)
+
+    for rechtsgebied in rechtsgebieden:
+        uitspraak.rechtsgebieden.add(rechtsgebied)
 
     uitspraak.save()
 

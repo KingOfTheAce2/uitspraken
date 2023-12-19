@@ -50,7 +50,7 @@ class ProcedureSoort(models.Model):
         return f"{self.naam}"
 
     def __repr__(self) -> str:
-        return f"Procedure ({self.__str__()})"
+        return f"ProcedureSoort ({self.__str__()})"
 
 
 class Instantie(models.Model):
@@ -105,7 +105,19 @@ class Uitspraak(models.Model):
 
     # TODO: Support dcterms:replaces and dcterms:isReplacedBy
 
+    # TODO: Support dcterms:relation
+
+    uitspraak_type = models.CharField(
+        max_length=64,
+        choices={
+            "Uitspraak": "Uitspraak",
+            "Conclusie": "Conclusie"
+        },
+        default="Uitspraak"
+    )
     instantie = models.ForeignKey(Instantie, models.CASCADE)
+    procedure_soorten = models.ManyToManyField(ProcedureSoort)
+    rechtsgebieden = models.ManyToManyField(Rechtsgebied)
 
     class Meta:
         """Meta information for Django"""
