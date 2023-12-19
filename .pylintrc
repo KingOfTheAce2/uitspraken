@@ -567,6 +567,7 @@ generated-members=command.style.SUCCESS,
                   Instantie.objects.*,
                   Uitspraak.objects.*,
                   Rechtsgebied.objects.*,
+                  ProcedureSoort.objects.*,
                   Instantie.DoesNotExist,
                   Uitspraak.DoesNotExist,
 

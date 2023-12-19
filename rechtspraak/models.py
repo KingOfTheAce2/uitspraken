@@ -33,6 +33,26 @@ class Rechtsgebied(models.Model):
         return f"Rechtsgebied ({self.__str__()})"
 
 
+class ProcedureSoort(models.Model):
+    """Model for a type of procedure as listed in the waardelijst Procedures"""
+
+    naam = models.CharField(max_length=512)
+    identifier = models.URLField(unique=True)
+
+    class Meta:
+        """Meta information for Django"""
+
+        indexes = [
+            models.Index(fields=["naam"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.naam}"
+
+    def __repr__(self) -> str:
+        return f"Procedure ({self.__str__()})"
+
+
 class Instantie(models.Model):
     """Model for an Instantie: a specific court or body which at some point in time had the statutory power to issue legal decisions"""
 

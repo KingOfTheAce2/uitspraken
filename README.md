@@ -22,6 +22,7 @@ Then, we can initialize the database:
 $ ./manage migrate
 $ ./manage create_instanties
 $ ./manage create_rechtsgebieden
+$ ./manage create_procedures
 ```
 
 You are now ready to load in any XML-format uitspraken you have:
