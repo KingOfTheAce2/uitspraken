@@ -47,9 +47,9 @@ $ ./manage create_uitspraak_from_xml data
 Note that this may take some time. Once done, you can make queries directly in your database, or in Python using [the Django database-abstraction API](https://docs.djangoproject.com/en/5.0/topics/db/queries/).
 
 ## Open Data Rechtspraak
-Up until beginning of 2022, the Rechtspraak periodically published an XML-dump with all uitspraken in their database. Sadly, they no longer provide this server; but there is still an API to directly query their database. For more information, see [Open Data Rechtspraak (NL)](https://www.rechtspraak.nl/Uitspraken/Paginas/Open-Data.aspx).
+Up until January 2023, the Rechtspraak periodically published an XML-dump with all uitspraken in their database. Sadly, they no longer provide this server. There is however still an API to directly query their database. For more information, see [Open Data Rechtspraak (NL)](https://www.rechtspraak.nl/Uitspraken/Paginas/Open-Data.aspx).
 
-If you just want a copy of the complete XML-dump from januari 2022, please get in touch.
+If you just want a copy of the complete XML-dump from January 2023, please get in touch.
 
 ## License
 
