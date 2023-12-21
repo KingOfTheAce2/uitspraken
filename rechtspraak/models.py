@@ -107,12 +107,14 @@ class Uitspraak(models.Model):
 
     # TODO: Support dcterms:relation
 
+    class UitspraakType(models.TextChoices):
+
+        UITSPRAAK = "Uitspraak"
+        CONCLUSIE = "Conclusie"
+
     uitspraak_type = models.CharField(
         max_length=64,
-        choices={
-            "Uitspraak": "Uitspraak",
-            "Conclusie": "Conclusie"
-        },
+        choices=UitspraakType.choices,
         default="Uitspraak"
     )
     instantie = models.ForeignKey(Instantie, models.CASCADE)
