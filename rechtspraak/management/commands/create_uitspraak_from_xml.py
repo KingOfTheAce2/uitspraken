@@ -28,7 +28,8 @@ XML_NAMESPACES = {
     "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     "dcterms": "http://purl.org/dc/terms/",
     "psi": "http://psi.rechtspraak.nl/",
-    "rs": "http://www.rechtspraak.nl/schema/rechtspraak-1.0"
+    "rs": "http://www.rechtspraak.nl/schema/rechtspraak-1.0",
+    "ecli": "https://e-justice.europa.eu/ecli"
 }
 
 
@@ -105,6 +106,7 @@ def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspra
         logger.error("Could not find an inhoudsindicatie in XML %s", xmlfilename)
 
     uitspraak_xml = xmlroot.find("rs:uitspraak", XML_NAMESPACES)
+    conclusie_xml = xmlroot.find("rs:conclusie", XML_NAMESPACES)
     uitspraak_text = ""
 
     try:
@@ -112,7 +114,14 @@ def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspra
             if x.text is not None:
                 uitspraak_text += x.text + "\n"
     except AttributeError:
-        logger.error("Could not find a uitspraak in XML %s", xmlfilename)
+        logger.error("Could not find a uitspraak in XML %s, trying to find a conclusie", xmlfilename)
+
+        try:
+            for x in conclusie_xml.iter():
+                if x.text is not None:
+                    uitspraak_text += x.text + "\n"
+        except AttributeError:
+            logger.error("Neither uitspraak nor conclusie in XML %s", xmlfilename)
 
     uitspraak, created = Uitspraak.objects.update_or_create(
         ecli=ecli,
@@ -125,7 +134,7 @@ def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspra
     uitspraak.raw_xml = xmlstring
 
     uitspraak.inhoudsindicatie = inhoudsindicatie
-    uitspraak.uitspraak = uitspraak_text
+    uitspraak.tekst = uitspraak_text
 
     uitspraak.uitspraak_type = uitspraak_type
 

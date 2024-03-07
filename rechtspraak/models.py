@@ -92,6 +92,8 @@ class Uitspraak(models.Model):
 
     publicatiedatum = models.DateField(default=datetime.date(1000, 1, 1))
     uitspraakdatum = models.DateField(default=datetime.date(1000, 1, 1))
+    # TODO: Add support for dcterms:modified so that we can keep track of updates at the
+    # authorative API from de Rechtspraak.
 
     raw_xml = models.TextField()
 
@@ -101,14 +103,13 @@ class Uitspraak(models.Model):
     )
 
     inhoudsindicatie = models.TextField()
-    uitspraak = models.TextField()
+    tekst = models.TextField()
 
     # TODO: Support dcterms:replaces and dcterms:isReplacedBy
 
     # TODO: Support dcterms:relation
 
     class UitspraakType(models.TextChoices):
-
         UITSPRAAK = "Uitspraak"
         CONCLUSIE = "Conclusie"
 
@@ -127,8 +128,9 @@ class Uitspraak(models.Model):
         indexes = [
             models.Index(fields=["ecli"]),
             models.Index(fields=["zaaknummer"]),
-            models.Index(fields=["ecli", "publicatiedatum"]),
-            models.Index(fields=["ecli", "uitspraakdatum"])
+            models.Index(fields=["instantie", "publicatiedatum"]),
+            models.Index(fields=["instantie", "uitspraakdatum"]),
+            models.Index(fields=["uitspraak_type"])
         ]
 
     def __str__(self) -> str:
