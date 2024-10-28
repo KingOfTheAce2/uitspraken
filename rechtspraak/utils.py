@@ -206,8 +206,7 @@ def open_data_rechtspraak_api_request_all(params: dict) -> list[ET.Element]:
 
     while len(new_entries) == max:
         all_entries += new_entries
-        start += step
-        max += step
+        start += step + 1
         new_entries = open_data_rechtspraak_api_request(params, start, max)
 
     all_entries += new_entries
