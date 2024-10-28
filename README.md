@@ -49,10 +49,8 @@ Note that this may take some time. Once done, you can make queries directly in y
 ## Open Data Rechtspraak
 Up until January 2023, the Rechtspraak periodically published an XML-dump with all uitspraken in their database. Sadly, they no longer provide this server. There is however still an API to directly query their database. For more information, see [Open Data Rechtspraak (NL)](https://www.rechtspraak.nl/Uitspraken/Paginas/Open-Data.aspx).
 
-If you just want a copy of the complete XML-dump from January 2023, please get in touch.
-
 ## License
 
-Copyright (c) 2023 Martijn Staal <uitspraken [a t ] martijn-staal.nl>
+Copyright (c) 2023, 2024 Martijn Staal <uitspraken [a t ] martijn-staal.nl>
 
 Available under the European Union Public License v1.2 (EUPL-1.2), or, at your option, any later version.
