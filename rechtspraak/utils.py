@@ -16,6 +16,8 @@ import datetime
 import logging
 import xml.etree.ElementTree as ET
 
+import requests
+
 from rechtspraak.models import Instantie, Rechtsgebied, ProcedureSoort, Uitspraak
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,8 @@ XML_NAMESPACES = {
     "dcterms": "http://purl.org/dc/terms/",
     "psi": "http://psi.rechtspraak.nl/",
     "rs": "http://www.rechtspraak.nl/schema/rechtspraak-1.0",
-    "ecli": "https://e-justice.europa.eu/ecli"
+    "ecli": "https://e-justice.europa.eu/ecli",
+    "atom": "http://www.w3.org/2005/Atom"
 }
 
 
@@ -147,3 +150,85 @@ def create_uitspraak_from_xmlstring(xmlstring: str, xmlfilename: str) -> Uitspra
         logger.info("Successfully updated uitspraak %s", uitspraak)
 
     return uitspraak
+
+
+def create_uitspraak_from_ecli(ecli: str) -> Uitspraak:
+    """
+    Create an Uitspraak by retrieving the XML from the Open Data Rechtspraak API.
+    """
+
+    api_url = "https://data.rechtspraak.nl/uitspraken/content"
+    resp = requests.get(api_url, params={"id": ecli}, timeout=25)
+
+    xmlstring = resp.text
+
+    return create_uitspraak_from_xmlstring(xmlstring, ecli)
+
+
+def open_data_rechtspraak_api_request(params: dict, start: int, max: int) -> list[ET.Element]:
+    """
+    Query the ECLI index from Open Data Rechtspraak
+    """
+
+    api_url = "https://data.rechtspraak.nl/uitspraken/zoeken"
+
+    params["from"] = start
+    params["max"] = max
+
+    logger.debug(params)
+
+    resp = requests.get(api_url, params=params, timeout=25)
+
+    if resp.status_code != 200:
+        # TODO error handling
+        logger.error("Error querying index: %s", resp)
+
+    xml: ET.Element = ET.fromstring(resp.text)
+    entries = xml.findall("atom:entry", XML_NAMESPACES)
+
+    return entries
+
+
+def open_data_rechtspraak_api_request_all(params: dict) -> list[ET.Element]:
+    """
+    Query the ECLI index from Open Data Rechtspraak
+
+    Uses the paging feature of the API to make sure all entries are received
+    """
+
+    start = 0
+    max = 1000
+    step = 1000
+
+    all_entries = []
+
+    new_entries = open_data_rechtspraak_api_request(params, start, max)
+
+    while len(new_entries) == max:
+        all_entries += new_entries
+        start += step
+        max += step
+        new_entries = open_data_rechtspraak_api_request(params, start, max)
+
+    all_entries += new_entries
+
+    return all_entries
+
+
+def get_updated_eclis_for_instantie_since(instantie: Instantie, since: datetime.date) -> list[str]:
+    """
+    Get all ECLI's whose entries have been updated since the given date.
+    """
+
+    entries = open_data_rechtspraak_api_request_all({
+        "creator": instantie.identifier,
+        "modified": since.strftime("%Y-%m-%d")
+    })
+
+    eclis = []
+
+    for entry in entries:
+        ecli = entry.find("atom:id", XML_NAMESPACES).text
+        eclis.append(ecli)
+
+    return eclis
