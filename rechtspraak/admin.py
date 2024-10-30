@@ -10,4 +10,8 @@
 
 from django.contrib import admin
 
+from rechtspraak.models import Uitspraak, Instantie, Rechtsgebied, ProcedureSoort
+
 # Register your models here.
+admin.site.register(Uitspraak)
+admin.site.register(Instantie)
