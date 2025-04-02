@@ -19,6 +19,7 @@ from typing import Any
 from django.core.management import BaseCommand
 
 from rechtspraak.models import Instantie, Uitspraak
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,35 +31,75 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Add arguments"""
 
-        instanties: list[str] = [ x for x in Instantie.objects.order_by("instantie_type").values_list("instantie_type", flat=True).distinct()]
+        instanties: list[str] = [
+            x
+            for x in Instantie.objects.order_by("instantie_type")
+            .values_list("instantie_type", flat=True)
+            .distinct()
+        ]
 
-        parser.add_argument("instantie_type", type=str, help=f"The instantie type to run the experiment on, possible options: {instanties}")
-        parser.add_argument("search_pattern", type=str, help="The regex search pattern to use")
-        parser.add_argument("--experiment_name", type=str, default="keywordsearch_experiment", help="The experiment name, defaults to keywordsearch_experiment")
-        parser.add_argument("--year", type=int, help="Optionally, the year to limit to; otherwise it runs on all decisions.")
-        parser.add_argument("--skip-same-id", action="store_true", help="Skip if experiment results with the same ID (but maybe not the same timestamp) already exists")
+        parser.add_argument(
+            "instantie_type",
+            type=str,
+            choices=instanties,
+            help="The instantie type to run the experiment on",
+        )
+        parser.add_argument(
+            "search_pattern", type=str, help="The regex search pattern to use"
+        )
+        parser.add_argument(
+            "--conditional-search-pattern",
+            type=str,
+            help="Optionally, provide a 2nd search pattern to also search if the initial search pattern was matched.",
+        )
+        parser.add_argument(
+            "--experiment-name",
+            type=str,
+            default="keywordsearch_experiment",
+            help="The experiment name, defaults to keywordsearch_experiment",
+        )
+        parser.add_argument(
+            "--year",
+            type=int,
+            help="Optionally, the year to limit to; otherwise it runs on all decisions.",
+        )
+        parser.add_argument(
+            "--skip-same-id",
+            action="store_true",
+            help="Skip if experiment results with the same ID (but maybe not the same timestamp) already exists",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         """A simple variable experiment for keyword searches"""
 
         instantie_type = options["instantie_type"]
-        logger.info("Performing experiment one on instanties of type %s", instantie_type)
+        logger.info(
+            "Performing experiment one on instanties of type %s", instantie_type
+        )
 
         if options["year"] is None:
             logger.info("Checking all results since 1995-1-1")
-            uitspraken = Uitspraak.objects.filter(
-                instantie__instantie_type=instantie_type,
-                uitspraakdatum__gte=datetime.date(1995, 1, 1)
-            ).exclude(tekst="").order_by("uitspraakdatum")
+            uitspraken = (
+                Uitspraak.objects.filter(
+                    instantie__instantie_type=instantie_type,
+                    uitspraakdatum__gte=datetime.date(1995, 1, 1),
+                )
+                .exclude(tekst="")
+                .order_by("uitspraakdatum")
+            )
         else:
             year = options["year"]
             logger.info("Limiting to year %s", year)
             daterange_start = datetime.date(year, 1, 1)
             daterange_end = datetime.date(year, 12, 31)
-            uitspraken = Uitspraak.objects.filter(
-                instantie__instantie_type=instantie_type,
-                uitspraakdatum__range=[daterange_start, daterange_end]
-            ).exclude(tekst="").order_by("uitspraakdatum")
+            uitspraken = (
+                Uitspraak.objects.filter(
+                    instantie__instantie_type=instantie_type,
+                    uitspraakdatum__range=[daterange_start, daterange_end],
+                )
+                .exclude(tekst="")
+                .order_by("uitspraakdatum")
+            )
 
         total = uitspraken.count()
 
@@ -67,9 +108,9 @@ class Command(BaseCommand):
         experiment_name = options["experiment_name"]
         logger.info("Experiment name is %s", experiment_name)
         if options["year"] is None:
-            experiment_id = f"{experiment_name}_all_1"
+            experiment_id = f"{experiment_name}_all"
         else:
-            experiment_id = f"{experiment_name}_{options['year']}_1"
+            experiment_id = f"{experiment_name}_{options['year']}"
         experiment_timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
         logger.info("Experiment id: %s", experiment_id)
@@ -80,6 +121,17 @@ class Command(BaseCommand):
 
         logger.info("Provided search pattern: %s", options["search_pattern"])
         search_pattern = re.compile(options["search_pattern"])
+
+        conditional_search_pattern_given = False
+        try:
+            second_search_pattern = re.compile(options["conditional_search_pattern"])
+            second_search_pattern_str = options["conditional_search_pattern"]
+            logger.info(
+                "Additional search pattern was provided: %s", second_search_pattern_str
+            )
+        except KeyError:
+            second_search_pattern_str = ""
+            logger.info("No conditional 2nd search pattern was provided.")
 
         cur = 1
         for uitspraak in uitspraken.iterator():
@@ -96,21 +148,37 @@ class Command(BaseCommand):
             try:
                 matches = search_pattern.findall(uitspraak.tekst)
 
-                experiment_info = {
-                        "experiment": experiment_name,
-                        "id": experiment_id,
-                        "datetime": experiment_timestamp,
-                        "matches": matches,
-                        "errors": []
-                    }
-            except Exception as e:
-                logger.critical("Failed to parse citations in %s: %s", uitspraak, e)
+                if conditional_search_pattern_given:
+                    if len(matches) > 0:
+                        logger.info(
+                            "Found matches on the initial search pattern, and a second pattern is provided; searching for those as well."
+                        )
+                        additional_matches = second_search_pattern.findall(
+                            uitspraak.tekst
+                        )
+                else:
+                    additional_matches = []
+
                 experiment_info = {
                     "experiment": experiment_name,
                     "id": experiment_id,
                     "datetime": experiment_timestamp,
+                    "search_pattern_used": options["search_pattern"],
+                    "second_search_pattern_used": second_search_pattern_str,
+                    "matches": matches,
+                    "additional_matches": additional_matches,
+                    "errors": [],
+                }
+
+            except Exception as e:
+                logger.critical("Failed to find keywords in %s: %s", uitspraak, e)
+                experiment_info = {
+                    "experiment": experiment_name,
+                    "id": experiment_id,
+                    "datetime": experiment_timestamp,
+                    "search_pattern_used": options["search_pattern"],
                     "matches": [],
-                    "errors": [str(e)]
+                    "errors": [str(e)],
                 }
 
             logger.debug("%s: %s", uitspraak, experiment_info)
