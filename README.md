@@ -19,29 +19,29 @@ If you want to use a different database than the default SQLite database, make t
 
 Then, we can initialize the database:
 ```
-$ ./manage migrate
-$ ./manage create_instanties
-$ ./manage create_rechtsgebieden
-$ ./manage create_procedures
+$ ./manage.py migrate
+$ ./manage.py create_instanties
+$ ./manage.py create_rechtsgebieden
+$ ./manage.py create_procedures
 ```
 
 You are now ready to load in any XML-format uitspraken you have:
 
 ```
-$ ./manage create_uitspraak_from_xml data/2021/ECLI_NL_RBLIM_2021_4036.xml
+$ ./manage.py create_uitspraak_from_xml data/2021/ECLI_NL_RBLIM_2021_4036.xml
 ```
 
 Note that you may supply multiple different XML files to this command, or use wildcards:
 ```
-$ ./manage create_uitspraak_from_xml data/2021/ECLI_NL_HR*
-$ ./manage create_uitspraak_from_xml ECLI_NL_RBLIM_2021_4036.xml ECLI_NL_RBLIM_2021_4037.xml
+$ ./manage.py create_uitspraak_from_xml data/2021/ECLI_NL_HR*
+$ ./manage.py create_uitspraak_from_xml ECLI_NL_RBLIM_2021_4036.xml ECLI_NL_RBLIM_2021_4037.xml
 ```
 
 You may also supply one or more directories, which contain XML files in the expected format:
 ```
 $ ls data
 ECLI_NL_GHAMS_1922_10.xml ECLI_NL_GHAMS_1922_11.xml ECLI_NL_GHAMS_1922_12.xml ...
-$ ./manage create_uitspraak_from_xml data
+$ ./manage.py create_uitspraak_from_xml data
 ```
 
 Note that this may take some time. Once done, you can make queries directly in your database, or in Python using [the Django database-abstraction API](https://docs.djangoproject.com/en/5.0/topics/db/queries/).
@@ -51,6 +51,6 @@ Up until January 2023, the Rechtspraak periodically published an XML-dump with a
 
 ## License
 
-Copyright (c) 2023, 2024 Martijn Staal <uitspraken [a t ] martijn-staal.nl>
+Copyright (c) 2023-2025 Martijn Staal <uitspraken [a t ] martijn-staal.nl>
 
 Available under the European Union Public License v1.2 (EUPL-1.2), or, at your option, any later version.
